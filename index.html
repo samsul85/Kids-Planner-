@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Family Planner</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fredoka+One&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #FFF8F0; --purple: #7C3AED; --pink: #EC4899;
+    --orange: #F97316; --green: #10B981; --blue: #3B82F6;
+    --yellow: #FBBF24; --text: #1E1B4B; --muted: #6B7280;
+    --shadow: 0 8px 32px rgba(0,0,0,0.10);
+  }
+  body { font-family: 'Nunito', sans-serif; background: var(--bg); min-height: 100vh; color: var(--text); overflow-x: hidden; }
+  .screen { display: none; min-height: 100vh; flex-direction: column; }
+  .screen.active { display: flex; }
+  button { font-family: inherit; }
+
+  /* PICKER (shared title/sub styles used by onboarding) */
+  .picker-title { font-family: 'Fredoka One',cursive; font-size: clamp(2rem,5vw,3rem); color: white; text-align: center; margin-bottom: 6px; text-shadow: 0 4px 12px rgba(0,0,0,.2); }
+  .picker-sub { color: rgba(255,255,255,.85); font-size: 1.05rem; text-align: center; margin-bottom: 36px; font-weight: 700; }
+  .profiles-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 18px; max-width: 680px; width: 100%; }
+  .profile-card { background: rgba(255,255,255,.18); backdrop-filter: blur(12px); border: 2px solid rgba(255,255,255,.35); border-radius: 28px; padding: 26px 14px 18px; display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: all .25s cubic-bezier(.34,1.56,.64,1); position: relative; }
+  .profile-card:hover { transform: translateY(-8px) scale(1.04); background: rgba(255,255,255,.28); box-shadow: 0 20px 40px rgba(0,0,0,.2); }
+  .profile-card:active { transform: scale(.96); }
+  .avatar { width: 76px; height: 76px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; margin-bottom: 10px; border: 4px solid rgba(255,255,255,.6); box-shadow: 0 6px 20px rgba(0,0,0,.15); }
+  .profile-name { font-family: 'Fredoka One',cursive; font-size: 1.1rem; color: white; text-align: center; }
+  .profile-role { font-size: .75rem; color: rgba(255,255,255,.75); margin-top: 3px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+  .parent-card { background: rgba(255,255,255,.28); border: 2px solid rgba(255,255,255,.6); }
+  .theme-edit-btn { position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; border-radius: 50%; background: rgba(255,255,255,.3); border: none; color: white; font-size: .8rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .theme-edit-btn:hover { background: rgba(255,255,255,.5); }
+
+  /* TOPBAR */
+  .topbar { padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; color: white; flex-wrap: wrap; gap: 10px; }
+  .topbar-title { font-family: 'Fredoka One',cursive; font-size: 1.4rem; }
+  .back-btn { background: rgba(255,255,255,.2); border: none; border-radius: 50px; color: white; padding: 8px 18px; font-weight: 700; cursor: pointer; font-size: .9rem; transition: background .2s; }
+  .back-btn:hover { background: rgba(255,255,255,.35); }
+
+  /* PARENT */
+  #screen-parent { background: #F1F5F9; }
+  .parent-topbar { background: linear-gradient(90deg,#7C3AED,#EC4899); }
+  .parent-content { padding: 24px; max-width: 1100px; margin: 0 auto; width: 100%; }
+  .section-label { font-family: 'Fredoka One',cursive; font-size: 1.25rem; color: var(--text); margin-bottom: 14px; margin-top: 8px; }
+  .kids-overview { display: grid; grid-template-columns: repeat(auto-fit,minmax(210px,1fr)); gap: 16px; margin-bottom: 28px; }
+  .kid-overview-card { background: white; border-radius: 20px; padding: 18px; box-shadow: var(--shadow); border-top: 5px solid #ccc; cursor: pointer; transition: transform .2s; }
+  .kid-overview-card:hover { transform: translateY(-4px); }
+  .kid-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .kid-card-avatar { width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; }
+  .kid-card-name { font-family: 'Fredoka One',cursive; font-size: 1.05rem; }
+  .kid-card-age { font-size: .78rem; color: var(--muted); font-weight: 700; }
+  .stat-row { display: flex; gap: 8px; }
+  .stat-chip { background: #F3F4F6; border-radius: 10px; padding: 6px 10px; font-size: .78rem; font-weight: 700; flex: 1; text-align: center; }
+  .stat-chip span { display: block; font-size: 1rem; color: var(--purple); }
+  .parent-actions { display: grid; grid-template-columns: repeat(auto-fit,minmax(170px,1fr)); gap: 12px; margin-bottom: 28px; }
+  .action-btn { background: white; border: 2px dashed #D1D5DB; border-radius: 16px; padding: 18px; text-align: center; cursor: pointer; transition: all .2s; font-weight: 700; color: var(--muted); font-size: .92rem; }
+  .action-btn:hover { border-color: var(--purple); color: var(--purple); background: #F5F3FF; }
+  .action-btn .icon { font-size: 1.7rem; display: block; margin-bottom: 6px; }
+
+  /* FORM PANELS (parent tools) */
+  .form-panel { background: white; border-radius: 20px; padding: 22px; box-shadow: var(--shadow); margin-bottom: 24px; }
+  .form-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+  .form-row label { font-size: .82rem; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .form-row input, .form-row select { padding: 11px 14px; border: 2px solid #E5E7EB; border-radius: 12px; font-size: .95rem; font-weight: 600; font-family: inherit; color: var(--text); outline: none; transition: border-color .2s; }
+  .form-row input:focus, .form-row select:focus { border-color: var(--purple); }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(160px,1fr)); gap: 14px; }
+  .primary-btn { padding: 13px 22px; background: linear-gradient(90deg,var(--purple),var(--pink)); color: white; border: none; border-radius: 14px; font-family: 'Fredoka One',cursive; font-size: 1rem; cursor: pointer; transition: opacity .2s,transform .2s; box-shadow: 0 6px 20px rgba(124,58,237,.3); }
+  .primary-btn:hover { opacity: .92; transform: translateY(-2px); }
+  .secondary-btn { padding: 13px 22px; background: #F3F4F6; color: var(--text); border: none; border-radius: 14px; font-weight: 800; cursor: pointer; }
+  .list-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #F9FAFB; border-radius: 12px; margin-bottom: 8px; font-weight: 700; font-size: .9rem; }
+  .list-row .tag { background: #EDE9FE; color: var(--purple); padding: 2px 10px; border-radius: 20px; font-size: .72rem; }
+  .delete-x { margin-left: auto; background: none; border: none; color: #EF4444; cursor: pointer; font-size: 1rem; padding: 4px; }
+  .empty-hint { color: var(--muted); font-size: .85rem; font-weight: 600; text-align: center; padding: 12px; }
+
+  /* KID */
+  #screen-kid { background: var(--bg); }
+  .mode-toggle { display: flex; background: rgba(255,255,255,.2); border-radius: 50px; padding: 4px; gap: 4px; }
+  .mode-btn { padding: 7px 18px; border-radius: 50px; border: none; font-weight: 800; font-size: .85rem; cursor: pointer; transition: all .2s; color: rgba(255,255,255,.75); background: transparent; }
+  .mode-btn.active { background: white; color: var(--purple); box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+  .kid-body { flex: 1; padding: 20px; overflow-y: auto; }
+
+  /* EVENING */
+  .evening-panel { max-width: 680px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+  .card-panel { background: white; border-radius: 20px; padding: 20px; box-shadow: var(--shadow); }
+  .panel-title { font-family: 'Fredoka One',cursive; font-size: 1.1rem; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .event-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #F3F4F6; border-radius: 12px; margin-bottom: 8px; font-weight: 700; font-size: .9rem; }
+  .event-time { color: var(--muted); font-size: .78rem; min-width: 65px; }
+  .event-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .locked-badge { margin-left: auto; font-size: .68rem; background: #FEF3C7; color: #92400E; padding: 2px 8px; border-radius: 20px; font-weight: 700; }
+  .must-do-items { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+  .must-do-input { display: flex; align-items: center; gap: 12px; background: #F9FAFB; border-radius: 14px; padding: 12px 16px; border: 2px solid #E5E7EB; transition: border-color .2s; }
+  .must-do-input:focus-within { border-color: var(--purple); }
+  .must-num { width: 28px; height: 28px; border-radius: 50%; color: white; font-weight: 800; font-size: .82rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .must-do-input input { border: none; background: transparent; font-size: .93rem; font-weight: 700; color: var(--text); width: 100%; outline: none; }
+  .must-do-input input::placeholder { color: #9CA3AF; }
+  .save-btn { margin-top: 16px; width: 100%; padding: 15px; background: linear-gradient(90deg,var(--purple),var(--pink)); color: white; border: none; border-radius: 16px; font-family: 'Fredoka One',cursive; font-size: 1.1rem; cursor: pointer; transition: opacity .2s,transform .2s; box-shadow: 0 6px 20px rgba(124,58,237,.3); }
+  .save-btn:hover { opacity: .92; transform: translateY(-2px); }
+
+  /* MORNING */
+  .morning-layout { display: grid; grid-template-columns: 1fr 300px; gap: 18px; max-width: 1060px; margin: 0 auto; align-items: start; }
+  @media(max-width:720px){ .morning-layout{grid-template-columns:1fr;} .profiles-grid{grid-template-columns:repeat(2,1fr);} }
+  .timetable-wrap { background: white; border-radius: 20px; padding: 18px; box-shadow: var(--shadow); }
+  .timetable-scroll { overflow-y: auto; max-height: 500px; position: relative; }
+  .timetable-grid { position: relative; }
+  .time-slot { display: flex; min-height: 34px; border-bottom: 1px solid #F3F4F6; }
+  .time-slot:nth-child(4n+1) { border-bottom: 1px solid #E5E7EB; }
+  .time-label { width: 52px; padding: 7px 8px 0 0; font-size: .7rem; color: var(--muted); font-weight: 700; text-align: right; flex-shrink: 0; margin-top: -10px; }
+  .slot-drop { flex: 1; min-height: 34px; border-left: 2px solid #E5E7EB; padding: 2px 4px; transition: background .15s; position: relative; }
+  .slot-drop.drag-over { background: #EDE9FE; }
+  .slot-drop.occupied { pointer-events: none; }
+  .placed-block-overlay { position: absolute; left: 56px; right: 4px; border-radius: 10px; padding: 4px 10px; font-size: .78rem; font-weight: 700; color: white; box-shadow: 0 2px 6px rgba(0,0,0,.12); overflow: hidden; display: flex; align-items: flex-start; justify-content: space-between; z-index: 2; }
+  .placed-block-overlay.locked { opacity: .9; }
+  .placed-block-overlay .pb-label { flex: 1; }
+  .placed-block-overlay .pb-time { font-size: .68rem; opacity: .85; font-weight: 600; display: block; }
+  .remove-block { background: none; border: none; color: rgba(255,255,255,.85); cursor: pointer; font-size: .85rem; padding: 0 2px; flex-shrink: 0; }
+  .resize-handle { position: absolute; bottom: 0; left: 0; right: 0; height: 10px; cursor: ns-resize; display: flex; align-items: flex-end; justify-content: center; }
+  .resize-handle::after { content: ''; width: 28px; height: 4px; border-radius: 4px; background: rgba(255,255,255,.7); margin-bottom: 2px; }
+  .placed-block-overlay.locked .resize-handle { display: none; }
+  .placed-block { border-radius: 10px; padding: 3px 10px; font-size: .78rem; font-weight: 700; color: white; margin: 1px 0; cursor: move; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 6px rgba(0,0,0,.12); min-height: 26px; }
+  .placed-block.locked { opacity: .85; cursor: not-allowed; background: #94A3B8 !important; }
+  .placed-block.enforced { outline: 2px dashed rgba(255,255,255,.7); outline-offset: -3px; }
+  .remove-block { background: none; border: none; color: rgba(255,255,255,.85); cursor: pointer; font-size: .85rem; padding: 0 2px; }
+  .activity-sidebar { display: flex; flex-direction: column; gap: 14px; }
+  .streak-panel { background: linear-gradient(135deg,#FBBF24,#F97316); border-radius: 20px; padding: 16px; color: white; text-align: center; box-shadow: 0 6px 20px rgba(251,191,36,.35); }
+  .streak-num { font-family: 'Fredoka One',cursive; font-size: 2.8rem; line-height: 1; }
+  .streak-label { font-weight: 700; font-size: .82rem; opacity: .92; margin-top: 2px; }
+  .must-panel { background: linear-gradient(135deg,#7C3AED15,#EC489915); border: 2px solid #7C3AED30; border-radius: 20px; padding: 16px; }
+  .must-item { display: flex; align-items: center; gap: 10px; padding: 7px 0; font-weight: 700; font-size: .88rem; border-bottom: 1px solid #E5E7EB; }
+  .must-item:last-child { border-bottom: none; }
+  .must-edit-input { flex: 1; border: none; background: transparent; font: inherit; font-weight: 700; color: inherit; padding: 4px 2px; border-radius: 6px; min-width: 0; }
+  .must-edit-input:focus { outline: 2px solid #C4B5FD; background: #FAF5FF; }
+  .must-check { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--purple); display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; transition: all .2s; font-size: .65rem; color: white; }
+  .must-check.done { background: var(--purple); }
+  .activity-pool-panel { background: white; border-radius: 20px; padding: 16px; box-shadow: var(--shadow); }
+  .activity-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+  .activity-chip { padding: 7px 12px; border-radius: 50px; font-size: .8rem; font-weight: 800; color: white; cursor: grab; transition: transform .15s,box-shadow .15s; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; box-shadow: 0 3px 8px rgba(0,0,0,.12); position: relative; }
+  .activity-chip:hover { transform: scale(1.08); box-shadow: 0 6px 16px rgba(0,0,0,.18); }
+  .activity-chip:active { cursor: grabbing; transform: scale(.96); }
+  .activity-chip.enforced::after { content: '!'; position: absolute; top: -4px; right: -4px; width: 16px; height: 16px; background: #1E1B4B; color: white; border-radius: 50%; font-size: .65rem; display: flex; align-items: center; justify-content: center; font-weight: 900; }
+  .add-activity-row { display: flex; gap: 6px; margin-top: 12px; }
+  .add-activity-row input { flex: 1; padding: 9px 12px; border: 2px solid #E5E7EB; border-radius: 10px; font-size: .82rem; font-weight: 600; font-family: inherit; outline: none; transition: border-color .2s; min-width: 0; }
+  .add-activity-row input:focus { border-color: var(--purple); }
+  .add-activity-btn { padding: 9px 14px; background: var(--purple); color: white; border: none; border-radius: 10px; font-weight: 800; font-size: .8rem; cursor: pointer; white-space: nowrap; transition: opacity .2s; }
+  .add-activity-btn:hover { opacity: .88; }
+
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: #1E1B4B; color: white; padding: 13px 26px; border-radius: 50px; font-weight: 700; font-size: .92rem; transition: transform .35s cubic-bezier(.34,1.56,.64,1); z-index: 9999; white-space: nowrap; max-width: 90vw; text-align: center; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* MODAL (theme picker) */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+  .modal-overlay.show { display: flex; }
+  .modal-box { background: white; border-radius: 24px; padding: 28px; max-width: 480px; width: 100%; max-height: 85vh; overflow-y: auto; }
+  .modal-title { font-family: 'Fredoka One',cursive; font-size: 1.3rem; margin-bottom: 18px; text-align: center; }
+  .theme-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 20px; }
+  .theme-option { border-radius: 18px; padding: 16px 8px; display: flex; flex-direction: column; align-items: center; cursor: pointer; border: 3px solid transparent; transition: all .2s; }
+  .theme-option:hover { transform: scale(1.05); }
+  .theme-option.selected { border-color: var(--text); box-shadow: 0 0 0 3px rgba(0,0,0,.1); }
+  .theme-option .emoji { font-size: 2rem; margin-bottom: 6px; }
+  .modal-actions { display: flex; gap: 10px; }
+  .modal-actions button { flex: 1; }
+
+  /* ONBOARDING */
+  #screen-onboard { background: linear-gradient(135deg,#667eea,#764ba2); align-items: center; justify-content: center; padding: 32px 16px; }
+  .onboard-card { background: white; border-radius: 28px; padding: 36px 28px; max-width: 480px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,.3); text-align: center; }
+  .onboard-step .picker-title { color: var(--text); text-shadow: none; }
+  .onboard-input { width: 100%; padding: 16px; border: 2px solid #E5E7EB; border-radius: 14px; font-size: 1.2rem; font-weight: 700; text-align: center; outline: none; margin-bottom: 18px; font-family: inherit; color: var(--text); transition: border-color .2s; }
+  .onboard-input:focus { border-color: var(--purple); }
+  .onboard-next { width: 100%; }
+  .onboard-divider { color: var(--muted); font-weight: 700; font-size: .82rem; margin: 16px 0; }
+  .upload-btn { display: inline-block; background: #F3F4F6; color: var(--text); font-weight: 800; padding: 12px 22px; border-radius: 50px; cursor: pointer; font-size: .9rem; transition: background .2s; }
+  .upload-btn:hover { background: #E5E7EB; }
+  #ob-photo-preview img, #prof-photo-preview img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin: 14px auto 0; display: block; border: 3px solid var(--purple); }
+  .color-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 10px; margin-bottom: 20px; }
+  .color-swatch { width: 100%; aspect-ratio: 1; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: all .2s; }
+  .color-swatch:hover { transform: scale(1.12); }
+  .color-swatch.selected { border-color: var(--text); box-shadow: 0 0 0 3px rgba(0,0,0,.12); }
+</style>
+</head>
+<body>
+
+<!-- ONBOARDING (first run only) -->
+<div id="screen-onboard" class="screen active">
+  <div class="onboard-card">
+    <!-- Step 1: Name -->
+    <div class="onboard-step" id="ob-step-name">
+      <div class="picker-title" style="font-size:2rem">👋 What's your name?</div>
+      <input type="text" id="ob-name" class="onboard-input" placeholder="Type your name..." maxlength="20" />
+      <button class="primary-btn onboard-next" onclick="obNext('name')">Next →</button>
+    </div>
+
+    <!-- Step 2: Avatar -->
+    <div class="onboard-step" id="ob-step-avatar" style="display:none">
+      <div class="picker-title" style="font-size:1.8rem">🎨 Pick your avatar</div>
+      <div class="picker-sub" style="margin-bottom:18px">Choose an emoji or upload a photo</div>
+      <div class="theme-grid" id="ob-emoji-grid"></div>
+      <div class="onboard-divider">— or —</div>
+      <label class="upload-btn">
+        📷 Upload a Photo
+        <input type="file" accept="image/*" id="ob-photo-input" onchange="obPhotoSelected(event)" style="display:none" />
+      </label>
+      <div id="ob-photo-preview"></div>
+      <button class="primary-btn onboard-next" onclick="obNext('avatar')">Next →</button>
+    </div>
+
+    <!-- Step 3: Color -->
+    <div class="onboard-step" id="ob-step-color" style="display:none">
+      <div class="picker-title" style="font-size:1.8rem">🌈 Pick your color</div>
+      <div class="picker-sub" style="margin-bottom:18px">This colors your whole planner</div>
+      <div class="color-grid" id="ob-color-grid"></div>
+      <button class="primary-btn onboard-next" onclick="obNext('color')">Next →</button>
+    </div>
+
+    <!-- Step 4: Age -->
+    <div class="onboard-step" id="ob-step-age" style="display:none">
+      <div class="picker-title" style="font-size:1.8rem">🎂 How old are you?</div>
+      <input type="number" id="ob-age" class="onboard-input" placeholder="Age" min="2" max="18" style="max-width:140px;text-align:center" />
+      <button class="primary-btn onboard-next" onclick="obNext('age')">✨ Start Planning!</button>
+    </div>
+  </div>
+</div>
+
+<!-- KID PLANNER -->
+<div id="screen-kid" class="screen">
+  <div class="topbar" id="kid-topbar">
+    <button class="back-btn" onclick="confirmResetDevice()" style="font-size:.72rem;opacity:.7">⚙️ Reset Device</button>
+    <div id="kid-title" style="font-family:'Fredoka One',cursive;font-size:1.25rem"></div>
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="btn-evening" onclick="setMode('evening')">🌙 For Tomorrow</button>
+      <button class="mode-btn" id="btn-morning" onclick="setMode('morning')">☀️ Today</button>
+      <button class="mode-btn" id="btn-parent" onclick="setMode('parent')">👨‍👩‍👧 Parent Review</button>
+      <button class="mode-btn" id="btn-profile" onclick="setMode('profile')">👤 Profile</button>
+    </div>
+  </div>
+
+  <!-- EVENING -->
+  <div id="mode-evening" class="kid-body">
+    <div class="evening-panel">
+      <div class="card-panel">
+        <div class="panel-title">📅 Tomorrow's Locked Events</div>
+        <div id="tomorrow-events-list"></div>
+      </div>
+      <div class="card-panel">
+        <div class="panel-title">⭐ My 3 Must-Accomplish Tomorrow</div>
+        <div id="evening-status" style="font-size:.85rem;font-weight:600;color:var(--muted);background:#F9FAFB;padding:10px 14px;border-radius:12px;margin-bottom:14px"></div>
+        <div class="must-do-items">
+          <div class="must-do-input">
+            <div class="must-num" style="background:#7C3AED">1</div>
+            <input type="text" placeholder="What's most important tomorrow?" id="must1" />
+          </div>
+          <div class="must-do-input">
+            <div class="must-num" style="background:#EC4899">2</div>
+            <input type="text" placeholder="Second priority..." id="must2" />
+          </div>
+          <div class="must-do-input">
+            <div class="must-num" style="background:#10B981">3</div>
+            <input type="text" placeholder="Third priority..." id="must3" />
+          </div>
+        </div>
+        <button class="save-btn" onclick="saveEvening()">✨ Save My Plan for Tomorrow</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MORNING -->
+  <div id="mode-morning" class="kid-body" style="display:none">
+    <div class="morning-layout">
+      <div class="timetable-wrap">
+        <div class="panel-title" style="margin-bottom:12px">📆 My Day — <span id="morning-date"></span></div>
+        <div class="timetable-scroll" id="timetable"></div>
+      </div>
+      <div class="activity-sidebar">
+        <div class="activity-pool-panel">
+          <div class="panel-title" style="margin-bottom:2px">🎯 Activities</div>
+          <div style="font-size:.75rem;color:var(--muted);margin-bottom:8px;font-weight:700">Drag into your calendar! Items marked <strong>!</strong> are required.</div>
+          <div class="activity-chips" id="activity-pool"></div>
+          <div class="add-activity-row">
+            <input type="text" id="new-activity-name" placeholder="Add your own activity..." maxlength="24" onkeydown="if(event.key==='Enter')addCustomActivity()" />
+            <button class="add-activity-btn" onclick="addCustomActivity()">+ Add</button>
+          </div>
+        </div>
+        <div class="must-panel">
+          <div class="panel-title" style="margin-bottom:8px">⭐ Must Accomplish</div>
+          <div id="must-list-morning"></div>
+        </div>
+        <div class="streak-panel">
+          <div style="font-size:1.8rem">🔥</div>
+          <div class="streak-num" id="streak-display">0</div>
+          <div class="streak-label">Day Streak! Keep it up!</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PARENT REVIEW (scoped to this one kid) -->
+  <div id="mode-parent" class="kid-body" style="display:none">
+    <div class="parent-content" style="padding:0;max-width:900px">
+      <div class="form-panel" id="parent-review-summary"></div>
+
+      <div class="section-label">⚙️ Manage <span id="parent-review-name"></span>'s Day</div>
+      <div class="parent-actions">
+        <div class="action-btn" onclick="openParentTool('event')"><span class="icon">📅</span>Add Locked Event</div>
+        <div class="action-btn" onclick="openParentTool('task')"><span class="icon">✅</span>Set Enforced Task</div>
+        <div class="action-btn" onclick="openParentTool('hours')"><span class="icon">⏰</span>Configure Hours</div>
+        <div class="action-btn" onclick="openParentTool('streaks')"><span class="icon">🔥</span>Streak History</div>
+      </div>
+
+      <div id="parent-tool-area"></div>
+    </div>
+  </div>
+
+  <!-- PROFILE (editable anytime) -->
+  <div id="mode-profile" class="kid-body" style="display:none">
+    <div class="evening-panel">
+      <div class="card-panel">
+        <div class="panel-title">👤 My Profile</div>
+        <div class="form-row"><label>Name</label><input type="text" id="prof-name" maxlength="20" /></div>
+        <div class="form-row"><label>Age</label><input type="number" id="prof-age" min="2" max="18" style="max-width:120px" /></div>
+      </div>
+      <div class="card-panel">
+        <div class="panel-title">🎨 My Avatar</div>
+        <div class="theme-grid" id="prof-emoji-grid"></div>
+        <div class="onboard-divider">— or —</div>
+        <label class="upload-btn">
+          📷 Upload a Photo
+          <input type="file" accept="image/*" id="prof-photo-input" onchange="profPhotoSelected(event)" style="display:none" />
+        </label>
+        <div id="prof-photo-preview"></div>
+      </div>
+      <div class="card-panel">
+        <div class="panel-title">🌈 My Color</div>
+        <div class="color-grid" id="prof-color-grid"></div>
+      </div>
+      <button class="save-btn" onclick="saveProfile()">💾 Save Profile</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+
+<script>
+  /* ============ DATA LAYER ============
+     Structured to mirror future Supabase tables:
+     kids, events, must_dos, calendar_blocks, enforced_tasks
+     Swap localStorage calls for supabase-js calls later — same shape.
+  */
+  const STORAGE_KEY = 'family_planner_data_v2';
+
+  const AVATAR_EMOJIS = ['🦋','🦁','🌸','🚀','🐉','⚡','🦄','🐢','🐺','🦊','🐨','🦖','🐬','🦉','🐯'];
+  const COLOR_OPTIONS = ['#EC4899','#F97316','#10B981','#3B82F6','#8B5CF6','#FBBF24','#F472B6','#14B8A6','#6366F1','#EF4444'];
+  // Kept for backward compatibility with the old theme-edit modal on existing profiles
+  const THEME_PACKS = AVATAR_EMOJIS.map((e,i) => ({ emoji: e, color: COLOR_OPTIONS[i % COLOR_OPTIONS.length], name: e }));
+
+  function defaultData() {
+    return {
+      kids: [],
+      events: [],
+      enforcedTasks: [],
+      mustDos: {},     // key: `${kidId}_${date}` -> { items: [str,str,str], done: [bool,bool,bool], savedAt, isPlaceholder }
+      blocks: {},      // key: `${kidId}_${date}` -> { '07:00': {label,color,slots}, ... } slots = number of 15-min units
+      streakLog: {},   // key: `${kidId}_streakDate` -> date string already counted
+      customActivities: {}, // key: kidId -> [{ label, color }, ...] activities the kid added themselves
+    };
+  }
+
+  function loadData() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    const d = defaultData();
+    saveData(d);
+    return d;
+  }
+
+  function saveData(d) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); } catch (e) {}
+  }
+
+  let DATA = loadData();
+
+  function localDateStr(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+  function todayStr() { return localDateStr(new Date()); }
+  function tomorrowStr() { const d = new Date(); d.setDate(d.getDate() + 1); return localDateStr(d); }
+
+  const baseActivities = [
+    { label: '📖 Reading', color: '#3B82F6' },
+    { label: '🎨 Drawing', color: '#EC4899' },
+    { label: '🎮 Free Time', color: '#10B981' },
+    { label: '🧘 Relax', color: '#14B8A6' },
+    { label: '🚴 Exercise', color: '#F97316' },
+    { label: '🎵 Practice', color: '#8B5CF6' },
+    { label: '🍳 Help Cook', color: '#FBBF24' },
+    { label: '🧩 Puzzle', color: '#EF4444' },
+    { label: '✏️ Writing', color: '#6366F1' },
+  ];
+
+  /* ============ STATE ============ */
+  const DEVICE_KEY = 'family_planner_device_kid';
+  let currentKidId = null;
+  let dragActivity = null;
+  let themeTargetKidId = null;
+  let pendingTheme = null;
+
+  /* Touch-and-mouse-friendly drag, using Pointer Events instead of HTML5 DnD
+     (HTML5 drag/drop has no real support on iPad Safari / touch browsers). */
+  function startChipDrag(chip, activity) {
+    let ghost = null;
+    let lastDrop = null;
+    let dragging = false;
+    const THRESHOLD = 6; // px of movement before we treat this as a drag, not a tap
+
+    chip.addEventListener('pointerdown', (e) => {
+      const startX = e.clientX, startY = e.clientY;
+      let moved = false;
+
+      const onMove = (ev) => {
+        if (!dragging) {
+          if (Math.abs(ev.clientX - startX) < THRESHOLD && Math.abs(ev.clientY - startY) < THRESHOLD) return;
+          dragging = true;
+          moved = true;
+          dragActivity = activity;
+          ghost = chip.cloneNode(true);
+          ghost.style.position = 'fixed';
+          ghost.style.pointerEvents = 'none';
+          ghost.style.opacity = '0.85';
+          ghost.style.zIndex = '9999';
+          ghost.style.width = chip.offsetWidth + 'px';
+          ghost.style.transform = 'scale(1.05)';
+          ghost.style.boxShadow = '0 8px 20px rgba(0,0,0,.25)';
+          document.body.appendChild(ghost);
+          chip.style.opacity = '0.4';
+        }
+        if (ghost) {
+          ghost.style.left = (ev.clientX - ghost.offsetWidth / 2) + 'px';
+          ghost.style.top = (ev.clientY - 20) + 'px';
+        }
+        if (lastDrop) lastDrop.classList.remove('drag-over');
+        ghost && (ghost.style.display = 'none');
+        const el = document.elementFromPoint(ev.clientX, ev.clientY);
+        ghost && (ghost.style.display = '');
+        const drop = el && el.closest ? el.closest('.slot-drop') : null;
+        if (drop && !drop.classList.contains('occupied')) {
+          drop.classList.add('drag-over');
+          lastDrop = drop;
+        } else {
+          lastDrop = null;
+        }
+      };
+
+      const onUp = (ev) => {
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        chip.style.opacity = '';
+        if (ghost) { ghost.remove(); ghost = null; }
+        if (dragging && lastDrop) {
+          lastDrop.classList.remove('drag-over');
+          const key = lastDrop.dataset.key;
+          const blockKey = lastDrop.dataset.blockKey;
+          if (key && blockKey) {
+            if (!DATA.blocks[blockKey]) DATA.blocks[blockKey] = {};
+            DATA.blocks[blockKey][key] = { label: activity.label, color: activity.color, slots: 1 };
+            saveData(DATA);
+            renderMorning();
+          }
+        }
+        dragging = false;
+        dragActivity = null;
+        lastDrop = null;
+      };
+
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+    });
+  }
+
+  function getDeviceKidId() {
+    try { return localStorage.getItem(DEVICE_KEY); } catch (e) { return null; }
+  }
+  function setDeviceKidId(kidId) {
+    try { localStorage.setItem(DEVICE_KEY, kidId); } catch (e) {}
+  }
+  function clearDeviceKidId() {
+    try { localStorage.removeItem(DEVICE_KEY); } catch (e) {}
+  }
+
+  /* ============ ONBOARDING WIZARD (first run only) ============ */
+  let obData = { name: '', emoji: AVATAR_EMOJIS[0], photo: null, color: COLOR_OPTIONS[0], age: '' };
+
+  function startOnboarding() {
+    obData = { name: '', emoji: AVATAR_EMOJIS[0], photo: null, color: COLOR_OPTIONS[0], age: '' };
+    document.getElementById('ob-name').value = '';
+    document.getElementById('ob-age').value = '';
+    document.getElementById('ob-photo-preview').innerHTML = '';
+    renderEmojiGrid('ob-emoji-grid', null, (emoji) => { obData.emoji = emoji; obData.photo = null; document.getElementById('ob-photo-preview').innerHTML = ''; });
+    renderColorGrid('ob-color-grid', null, (color) => { obData.color = color; });
+    showOnboardStep('name');
+    showScreen('screen-onboard');
+  }
+
+  function showOnboardStep(step) {
+    ['name','avatar','color','age'].forEach(s => {
+      document.getElementById('ob-step-' + s).style.display = s === step ? '' : 'none';
+    });
+  }
+
+  function renderEmojiGrid(containerId, selectedEmoji, onPick) {
+    const grid = document.getElementById(containerId);
+    grid.innerHTML = '';
+    AVATAR_EMOJIS.forEach(emoji => {
+      const opt = document.createElement('div');
+      opt.className = 'theme-option' + (emoji === selectedEmoji ? ' selected' : '');
+      opt.innerHTML = `<div class="emoji">${emoji}</div>`;
+      opt.onclick = () => {
+        grid.querySelectorAll('.theme-option').forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+        onPick(emoji);
+      };
+      grid.appendChild(opt);
+    });
+  }
+
+  function renderColorGrid(containerId, selectedColor, onPick) {
+    const grid = document.getElementById(containerId);
+    grid.innerHTML = '';
+    COLOR_OPTIONS.forEach(color => {
+      const sw = document.createElement('div');
+      sw.className = 'color-swatch' + (color === selectedColor ? ' selected' : '');
+      sw.style.background = color;
+      sw.onclick = () => {
+        grid.querySelectorAll('.color-swatch').forEach(o => o.classList.remove('selected'));
+        sw.classList.add('selected');
+        onPick(color);
+      };
+      grid.appendChild(sw);
+    });
+  }
+
+  function obPhotoSelected(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      obData.photo = e.target.result;
+      document.getElementById('ob-photo-preview').innerHTML = `<img src="${e.target.result}" />`;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function obNext(fromStep) {
+    if (fromStep === 'name') {
+      const name = document.getElementById('ob-name').value.trim();
+      if (!name) { showToast('✏️ Please type your name!'); return; }
+      obData.name = name;
+      showOnboardStep('avatar');
+    } else if (fromStep === 'avatar') {
+      showOnboardStep('color');
+    } else if (fromStep === 'color') {
+      showOnboardStep('age');
+    } else if (fromStep === 'age') {
+      const age = parseInt(document.getElementById('ob-age').value, 10);
+      if (!age || age < 2 || age > 18) { showToast('🎂 Please enter a valid age'); return; }
+      obData.age = age;
+      finishOnboarding();
+    }
+  }
+
+  function finishOnboarding() {
+    const newKid = {
+      id: 'k' + Date.now(),
+      name: obData.name,
+      emoji: obData.emoji,
+      photo: obData.photo,
+      color: obData.color,
+      age: obData.age,
+      streak: 0,
+      dayStart: '07:00',
+      dayEnd: '21:00',
+    };
+    DATA.kids.push(newKid);
+    saveData(DATA);
+    setDeviceKidId(newKid.id);
+    enterKid(newKid.id);
+    showToast(`🎉 Welcome, ${newKid.name}!`);
+  }
+
+  // Lets a parent re-bind this iPad to a different kid if it was set up by mistake.
+  // Requires an explicit confirm so a kid can't casually tap their way out of their profile.
+  function confirmResetDevice() {
+    const k = DATA.kids.find(x => x.id === currentKidId);
+    const ok = window.confirm(`Reset this iPad? It's currently set up for ${k ? k.name : 'this kid'}. This removes the device link but keeps ${k ? k.name : 'their'} saved data. This should only be done by a parent.`);
+    if (ok) {
+      clearDeviceKidId();
+      currentKidId = null;
+      startOnboarding();
+    }
+  }
+
+  /* ============ NAVIGATION ============ */
+  function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+
+  // On load: if this device is already bound to a kid, go straight to their planner.
+  // Otherwise, this is a brand-new device — start the onboarding wizard.
+  function goHome() {
+    const deviceKid = getDeviceKidId();
+    if (deviceKid && DATA.kids.find(k => k.id === deviceKid)) {
+      enterKid(deviceKid);
+    } else {
+      startOnboarding();
+    }
+  }
+
+  function enterKid(kidId) {
+    currentKidId = kidId;
+    const k = DATA.kids.find(x => x.id === kidId);
+    document.getElementById('kid-topbar').style.background = `linear-gradient(90deg,${k.color}dd,${k.color}99)`;
+    document.getElementById('kid-title').textContent = `${k.photo ? '' : k.emoji} ${k.name}'s Planner`;
+    setMode('evening');
+    showScreen('screen-kid');
+  }
+
+  function setMode(mode) {
+    document.getElementById('btn-evening').classList.toggle('active', mode === 'evening');
+    document.getElementById('btn-morning').classList.toggle('active', mode === 'morning');
+    document.getElementById('btn-parent').classList.toggle('active', mode === 'parent');
+    document.getElementById('btn-profile').classList.toggle('active', mode === 'profile');
+    document.getElementById('mode-evening').style.display = mode === 'evening' ? '' : 'none';
+    document.getElementById('mode-morning').style.display = mode === 'morning' ? '' : 'none';
+    document.getElementById('mode-parent').style.display = mode === 'parent' ? '' : 'none';
+    document.getElementById('mode-profile').style.display = mode === 'profile' ? '' : 'none';
+    if (mode === 'evening') renderEvening();
+    if (mode === 'morning') renderMorning();
+    if (mode === 'parent') renderParentReview();
+    if (mode === 'profile') renderProfile();
+  }
+
+  /* ============ PROFILE (editable anytime, replaces old theme modal) ============ */
+  let profPhotoPending = null;
+
+  function renderProfile() {
+    const k = DATA.kids.find(x => x.id === currentKidId);
+    if (!k) return;
+    document.getElementById('prof-name').value = k.name;
+    document.getElementById('prof-age').value = k.age;
+    profPhotoPending = k.photo || null;
+    document.getElementById('prof-photo-preview').innerHTML = k.photo ? `<img src="${k.photo}" />` : '';
+    renderEmojiGrid('prof-emoji-grid', k.photo ? null : k.emoji, (emoji) => {
+      k._pendingEmoji = emoji;
+      profPhotoPending = null;
+      document.getElementById('prof-photo-preview').innerHTML = '';
+    });
+    renderColorGrid('prof-color-grid', k.color, (color) => { k._pendingColor = color; });
+  }
+
+  function profPhotoSelected(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      profPhotoPending = e.target.result;
+      document.getElementById('prof-photo-preview').innerHTML = `<img src="${e.target.result}" />`;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function saveProfile() {
+    const k = DATA.kids.find(x => x.id === currentKidId);
+    if (!k) return;
+    const name = document.getElementById('prof-name').value.trim();
+    const age = parseInt(document.getElementById('prof-age').value, 10);
+    if (!name) { showToast('✏️ Name cannot be empty'); return; }
+    if (!age || age < 2 || age > 18) { showToast('🎂 Please enter a valid age'); return; }
+    k.name = name;
+    k.age = age;
+    k.photo = profPhotoPending;
+    if (k._pendingEmoji) { k.emoji = k._pendingEmoji; delete k._pendingEmoji; }
+    if (k._pendingColor) { k.color = k._pendingColor; delete k._pendingColor; }
+    saveData(DATA);
+    document.getElementById('kid-topbar').style.background = `linear-gradient(90deg,${k.color}dd,${k.color}99)`;
+    document.getElementById('kid-title').textContent = `${k.photo ? '' : k.emoji} ${k.name}'s Planner`;
+    showToast('💾 Profile updated!');
+  }
+
+  /* ============ PARENT REVIEW (scoped to currentKidId) ============ */
+  function renderParentReview() {
+    const k = DATA.kids.find(x => x.id === currentKidId);
+    document.getElementById('parent-review-name').textContent = k.name;
+
+    const today = todayStr();
+    const tmrw = tomorrowStr();
+    const todayMd = DATA.mustDos[`${k.id}_${today}`];
+    const tmrwMd = DATA.mustDos[`${k.id}_${tmrw}`];
+    const doneCount = todayMd ? todayMd.items.filter((it,i) => it && todayMd.done[i]).length : 0;
+    const totalCount = todayMd ? todayMd.items.filter(it => it).length : 0;
+    const tmrwPlanned = tmrwMd && tmrwMd.savedAt && tmrwMd.items.some(it => it);
+
+    const summary = document.getElementById('parent-review-summary');
+    summary.innerHTML = `
+      <div class="panel-title">${k.emoji} ${k.name}'s Check-In</div>
+      <div class="form-grid" style="margin-bottom:0">
+        <div class="stat-chip" style="padding:14px"><span style="font-size:1.4rem">🔥 ${k.streak}</span>Day Streak</div>
+        <div class="stat-chip" style="padding:14px"><span style="font-size:1.4rem">${doneCount}/${totalCount||0}</span>Today's Must-Do's Done</div>
+        <div class="stat-chip" style="padding:14px"><span style="font-size:1.4rem">${tmrwPlanned ? '✅' : '⚠️'}</span>${tmrwPlanned ? 'Tomorrow Planned' : 'Not Planned Yet'}</div>
+      </div>
+      ${!totalCount ? '<div class="empty-hint" style="margin-top:14px">No must-dos were set for today.</div>' : ''}
+    `;
+    document.getElementById('parent-tool-area').innerHTML = '';
+  }
+
+  function openParentTool(tool) {
+    const area = document.getElementById('parent-tool-area');
+    if (tool === 'event') renderEventTool(area);
+    if (tool === 'task') renderTaskTool(area);
+    if (tool === 'hours') renderHoursTool(area);
+    if (tool === 'streaks') renderStreaksTool(area);
+    area.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+
+  function renderEventTool(area) {
+    const k = DATA.kids.find(x => x.id === currentKidId);
+    area.innerHTML = `
+      <div class="form-panel">
+        <div class="panel-title">📅 Add Locked Event for ${k.emoji} ${k.name}</div>
+        <div class="form-grid">
+          <div class="form-row"><label>Event Name</label><input id="ev-title" placeholder="e.g. Soccer Practice" /></div>
+          <div class="form-row"><label>Date</label><input id="ev-date" type="date" value="${tomorrowStr()}" /></div>
+          <div class="form-row"><label>Start Time</label><input id="ev-time" type="time" value="15:30" /></div>
+          <div class="form-row"><label>End Time</label><input id="ev-end-time" type="time" value="16:30" /></div>
+          <div class="form-row"><label>Color</label><input id="ev-color" type="color" value="#7C3AED" /></div>
+        </div>
+        <button class="primary-btn" onclick="addEvent()">+ Add Event</button>
+        <div class="panel-title" style="margin-top:22px">Upcoming Events</div>
+        <div id="event-list"></div>
+      </div>
+    `;
+    renderEventList();
+  }
+
+  function renderEventList() {
+    const list = document.getElementById('event-list');
+    if (!list) return;
+    const sorted = DATA.events.filter(e => e.kidId === currentKidId).sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time));
+    list.innerHTML = sorted.length ? '' : '<div class="empty-hint">No events yet — add one above!</div>';
+    sorted.forEach(e => {
+      const row = document.createElement('div');
+      row.className = 'list-row';
+      row.innerHTML = `${e.title} <span style="color:var(--muted);font-weight:600">${e.date} @ ${e.time}–${e.endTime || e.time}</span> <button class="delete-x" onclick="deleteEvent('${e.id}')">✕</button>`;
+      list.appendChild(row);
+    });
+  }
+
+  function addEvent() {
+    const title = document.getElementById('ev-title').value.trim();
+    const date = document.getElementById('ev-date').value;
+    const time = document.getElementById('ev-time').value;
+    const endTime = document.getElementById('ev-end-time').value;
+    const color = document.getElementById('ev-color').value;
+    if (!title || !date || !time || !endTime) { showToast('⚠️ Fill in all fields'); return; }
+    if (endTime <= time) { showToast('⚠️ End time must be after start time'); return; }
+    DATA.events.push({ id: 'e'+Date.now(), kidId: currentKidId, title, date, time, endTime, color });
+    saveData(DATA);
+    document.getElementById('ev-title').value = '';
+    renderEventList();
+    renderParentReview();
+    showToast('📅 Event added!');
+  }
+
+  function deleteEvent(id) {
+    DATA.events = DATA.events.filter(e => e.id !== id);
+    saveData(DATA);
+    renderEventList();
+    renderParentReview();
+  }
+
+  function renderTaskTool(area) {
+    area.innerHTML = `
+      <div class="form-panel">
+        <div class="panel-title">✅ Set Enforced Tasks</div>
+        <div style="font-size:.85rem;color:var(--muted);font-weight:600;margin-bottom:14px">These tasks will always appear in the activity pool and must be scheduled into the day.</div>
+        <div class="form-grid">
+          <div class="form-row"><label>Task</label><input id="task-label" placeholder="e.g. Homework" /></div>
+          <div class="form-row"><label>Emoji</label><input id="task-emoji" placeholder="📚" maxlength="2" /></div>
+          <div class="form-row"><label>Color</label><input id="task-color" type="color" value="#7C3AED" /></div>
+        </div>
+        <button class="primary-btn" onclick="addTask()">+ Add Enforced Task</button>
+        <div class="panel-title" style="margin-top:22px">Current Enforced Tasks</div>
+        <div id="task-list"></div>
+      </div>
+    `;
+    renderTaskList();
+  }
+
+  function renderTaskList() {
+    const list = document.getElementById('task-list');
+    if (!list) return;
+    const filtered = DATA.enforcedTasks.filter(t => t.kidId === currentKidId);
+    list.innerHTML = filtered.length ? '' : '<div class="empty-hint">No enforced tasks yet.</div>';
+    filtered.forEach(t => {
+      const row = document.createElement('div');
+      row.className = 'list-row';
+      row.innerHTML = `${t.label} <button class="delete-x" onclick="deleteTask('${t.id}')">✕</button>`;
+      list.appendChild(row);
+    });
+  }
+
+  function addTask() {
+    const label = document.getElementById('task-label').value.trim();
+    const emoji = document.getElementById('task-emoji').value.trim() || '⭐';
+    const color = document.getElementById('task-color').value;
+    if (!label) { showToast('⚠️ Enter a task name'); return; }
+    DATA.enforcedTasks.push({ id: 't'+Date.now(), kidId: currentKidId, label: `${emoji} ${label}`, color });
+    saveData(DATA);
+    document.getElementById('task-label').value = '';
+    document.getElementById('task-emoji').value = '';
+    renderTaskList();
+    showToast('✅ Enforced task added!');
+  }
+
+  function deleteTask(id) {
+    DATA.enforcedTasks = DATA.enforcedTasks.filter(t => t.id !== id);
+    saveData(DATA);
+    renderTaskList();
+  }
+
+  function renderHoursTool(area) {
+    const k = DATA.kids.find(x => x.id === currentKidId);
+    area.innerHTML = `
+      <div class="form-panel">
+        <div class="panel-title">⏰ Configure ${k.name}'s Hours</div>
+        <div style="font-size:.85rem;color:var(--muted);font-weight:600;margin-bottom:14px">Set ${k.name}'s daily timetable window.</div>
+        <div class="form-grid" style="align-items:end">
+          <div class="form-row" style="margin-bottom:0"><label>Day Start</label><input type="time" value="${k.dayStart}" onchange="updateHours('${k.id}','start',this.value)" /></div>
+          <div class="form-row" style="margin-bottom:0"><label>Day End</label><input type="time" value="${k.dayEnd}" onchange="updateHours('${k.id}','end',this.value)" /></div>
+        </div>
+      </div>
+    `;
+  }
+
+  function updateHours(kidId, which, value) {
+    const k = DATA.kids.find(x => x.id === kidId);
+    if (!k) return;
+    if (which === 'start') k.dayStart = value;
+    else k.dayEnd = value;
+    saveData(DATA);
+    showToast(`⏰ Updated ${k.name}'s hours`);
+  }
+
+  function renderStreaksTool(area) {
+    const k = DATA.kids.find(x => x.id === currentKidId);
+    area.innerHTML = `
+      <div class="form-panel">
+        <div class="panel-title">🔥 ${k.name}'s Streak</div>
+        <div class="stat-chip" style="padding:20px;text-align:center">
+          <span style="font-size:2.2rem">🔥 ${k.streak}</span>
+          <div style="margin-top:6px">Day Streak</div>
+        </div>
+      </div>
+    `;
+  }
+
+  /* ============ KID: EVENING ============ */
+  function renderEvening() {
+    const k = DATA.kids.find(x => x.id === currentKidId);
+    const date = tomorrowStr();
+    const evs = DATA.events.filter(e => e.kidId === currentKidId && e.date === date).sort((a,b) => a.time.localeCompare(b.time));
+    const list = document.getElementById('tomorrow-events-list');
+    list.innerHTML = evs.length ? '' : '<div class="empty-hint">No locked events tomorrow — a free day!</div>';
+    evs.forEach(e => {
+      const row = document.createElement('div');
+      row.className = 'event-item';
+      const t = e.time, h = parseInt(t.split(':')[0]), m = t.split(':')[1];
+      const h12 = h % 12 === 0 ? 12 : h % 12;
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      row.innerHTML = `<div class="event-time">${h12}:${m} ${ampm}</div><div class="event-dot" style="background:${e.color}"></div><span>${e.title}</span><div class="locked-badge">🔒 Parent</div>`;
+      list.appendChild(row);
+    });
+
+    const key = `${currentKidId}_${date}`;
+    const md = DATA.mustDos[key];
+    document.getElementById('must1').value = md ? (md.items[0]||'') : '';
+    document.getElementById('must2').value = md ? (md.items[1]||'') : '';
+    document.getElementById('must3').value = md ? (md.items[2]||'') : '';
+
+    const statusEl = document.getElementById('evening-status');
+    if (statusEl) {
+      if (md && md.savedAt) {
+        const savedTime = new Date(md.savedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        statusEl.innerHTML = `✅ Plan saved at ${savedTime} for <strong>tomorrow (${formatDateLabel(date)})</strong>. You can still make changes below.`;
+        statusEl.style.display = '';
+      } else {
+        statusEl.innerHTML = `📝 This plan is for <strong>tomorrow (${formatDateLabel(date)})</strong> — not yet saved.`;
+        statusEl.style.display = '';
+      }
+    }
+  }
+
+  function formatDateLabel(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+  }
+
+  function saveEvening() {
+    const date = tomorrowStr();
+    const items = [
+      document.getElementById('must1').value.trim(),
+      document.getElementById('must2').value.trim(),
+      document.getElementById('must3').value.trim(),
+    ];
+    if (!items[0] && !items[1] && !items[2]) { showToast('✏️ Write at least one must-do!'); return; }
+    const key = `${currentKidId}_${date}`;
+    const existing = DATA.mustDos[key];
+    DATA.mustDos[key] = {
+      items,
+      done: existing ? existing.done : [false,false,false],
+      savedAt: new Date().toISOString(),
+      isPlaceholder: false,
+    };
+    saveData(DATA);
+    renderEvening();
+    showToast(`🌙 Saved for ${formatDateLabel(date)}! Check Today tomorrow!`);
+  }
+
+  /* ============ KID: MORNING ============ */
+  function renderMorning() {
+    const k = DATA.kids.find(x => x.id === currentKidId);
+    const date = todayStr();
+    const now = new Date();
+    document.getElementById('morning-date').textContent = now.toLocaleDateString('en-US', { weekday:'long', month:'short', day:'numeric' });
+    document.getElementById('streak-display').textContent = k.streak;
+
+    // Must-do list — carried over from the evening plan saved the night before for TODAY.
+    const mdKey = `${currentKidId}_${date}`;
+    let md = DATA.mustDos[mdKey];
+    const hasRealPlan = md && md.savedAt && md.items.some(it => it);
+    if (!md) {
+      md = { items: ['','',''], done: [false,false,false], savedAt: null, isPlaceholder: true };
+    }
+
+    const ml = document.getElementById('must-list-morning');
+    ml.innerHTML = '';
+
+    if (!hasRealPlan) {
+      const notice = document.createElement('div');
+      notice.style.cssText = 'font-size:.82rem;font-weight:700;color:#92400E;background:#FEF3C7;padding:10px 12px;border-radius:10px;margin-bottom:10px';
+      notice.textContent = "⚠️ No plan was saved for today. These are just suggestions — use the 'For Tomorrow' tab tonight to set real goals!";
+      ml.appendChild(notice);
+    }
+
+    const defaults = ['Finish homework','Read for 20 mins','Tidy room'];
+    md.items.forEach((text, i) => {
+      const display = text || defaults[i];
+      const div = document.createElement('div');
+      div.className = 'must-item';
+      div.innerHTML = `<div class="must-check${md.done[i]?' done':''}" onclick="toggleMust(${i})">${md.done[i]?'✓':''}</div><input type="text" class="must-edit-input" value="${display.replace(/"/g,'&quot;')}" style="${md.done[i]?'text-decoration:line-through;color:#9CA3AF':''}" onchange="editMustText(${i}, this.value)" onblur="editMustText(${i}, this.value)" />${!text ? '<span style="margin-left:auto;font-size:.65rem;color:#9CA3AF;font-weight:700;white-space:nowrap">SUGGESTED</span>' : ''}`;
+      ml.appendChild(div);
+    });
+
+    // Activity pool: base activities + this kid's enforced tasks + their own custom ones
+    const pool = document.getElementById('activity-pool');
+    pool.innerHTML = '';
+    const enforced = DATA.enforcedTasks.filter(t => t.kidId === currentKidId);
+    const custom = DATA.customActivities[currentKidId] || [];
+    const allActivities = [
+      ...enforced.map(t => ({ label: t.label, color: t.color, enforced: true })),
+      ...custom.map(c => ({ label: c.label, color: c.color, custom: true })),
+      ...baseActivities,
+    ];
+    allActivities.forEach((a, idx) => {
+      const chip = document.createElement('div');
+      chip.className = 'activity-chip' + (a.enforced ? ' enforced' : '');
+      chip.style.background = a.color;
+      chip.textContent = a.label;
+      if (a.custom) {
+        const customIdx = custom.findIndex(c => c.label === a.label && c.color === a.color);
+        chip.title = 'Tap ✕ to remove';
+        chip.innerHTML = `${a.label} <span onclick="event.stopPropagation();removeCustomActivity(${customIdx})" style="margin-left:4px;opacity:.8;cursor:pointer">✕</span>`;
+      }
+      startChipDrag(chip, a);
+      pool.appendChild(chip);
+    });
+
+    buildTimetable(k, date);
+  }
+
+  const CUSTOM_ACTIVITY_COLORS = ['#7C3AED','#EC4899','#F97316','#10B981','#3B82F6','#14B8A6','#8B5CF6','#EF4444','#6366F1','#FBBF24'];
+
+  function addCustomActivity() {
+    const input = document.getElementById('new-activity-name');
+    const name = input.value.trim();
+    if (!name) { showToast('✏️ Type an activity name first'); return; }
+    if (!DATA.customActivities[currentKidId]) DATA.customActivities[currentKidId] = [];
+    const color = CUSTOM_ACTIVITY_COLORS[DATA.customActivities[currentKidId].length % CUSTOM_ACTIVITY_COLORS.length];
+    DATA.customActivities[currentKidId].push({ label: name, color });
+    saveData(DATA);
+    input.value = '';
+    showToast(`🎯 "${name}" added to your activities!`);
+    renderMorning();
+  }
+
+  function removeCustomActivity(idx) {
+    if (!DATA.customActivities[currentKidId]) return;
+    DATA.customActivities[currentKidId].splice(idx, 1);
+    saveData(DATA);
+    renderMorning();
+  }
+
+  function editMustText(i, newText) {
+    const date = todayStr();
+    const key = `${currentKidId}_${date}`;
+    let md = DATA.mustDos[key];
+    if (!md) md = { items: ['','',''], done: [false,false,false], savedAt: null, isPlaceholder: true };
+    const trimmed = newText.trim();
+    if (trimmed === (md.items[i] || '')) return; // no change, skip re-render/save
+    md.items[i] = trimmed;
+    md.savedAt = md.savedAt || new Date().toISOString();
+    md.isPlaceholder = false;
+    DATA.mustDos[key] = md;
+    saveData(DATA);
+    renderMorning();
+  }
+
+  function toggleMust(i) {
+    const date = todayStr();
+    const key = `${currentKidId}_${date}`;
+    let md = DATA.mustDos[key];
+    if (!md) md = { items: ['','',''], done: [false,false,false], savedAt: null, isPlaceholder: true };
+    md.done[i] = !md.done[i];
+    DATA.mustDos[key] = md;
+
+    // Streak logic: if all 3 must-do's (that have real text) are now done, and weren't already
+    // counted today, bump the streak once per day.
+    const realItems = md.items.map((it,idx) => ({ it, idx })).filter(x => x.it);
+    const allDone = realItems.length > 0 && realItems.every(x => md.done[x.idx]);
+    const k = DATA.kids.find(x => x.id === currentKidId);
+    const streakKey = `${currentKidId}_streakDate`;
+    if (allDone && DATA.streakLog?.[streakKey] !== date) {
+      k.streak = (k.streak || 0) + 1;
+      if (!DATA.streakLog) DATA.streakLog = {};
+      DATA.streakLog[streakKey] = date;
+      showToast(`🔥 All must-do's complete! Streak is now ${k.streak} days!`);
+    } else if (!allDone && DATA.streakLog?.[streakKey] === date) {
+      // Un-completing a task after counting the streak rolls it back, so kids can't game it
+      k.streak = Math.max(0, (k.streak || 0) - 1);
+      delete DATA.streakLog[streakKey];
+    }
+
+    saveData(DATA);
+    renderMorning();
+  }
+
+  const SLOT_HEIGHT = 34; // px, must match .time-slot min-height in CSS
+
+  function timeToSlotIndex(timeStr, startH) {
+    const [h, m] = timeStr.split(':').map(Number);
+    return ((h - startH) * 60 + m) / 15;
+  }
+
+  function slotIndexToTime(idx, startH) {
+    const totalMin = startH * 60 + idx * 15;
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  }
+
+  function buildTimetable(k, date) {
+    const wrap = document.getElementById('timetable');
+    wrap.innerHTML = '';
+    const blockKey = `${k.id}_${date}`;
+    if (!DATA.blocks[blockKey]) DATA.blocks[blockKey] = {};
+    const placed = DATA.blocks[blockKey];
+
+    const [startH] = k.dayStart.split(':').map(Number);
+    const [endH] = k.dayEnd.split(':').map(Number);
+    const totalSlots = (endH - startH) * 4;
+
+    // Build the locked-event map: each occupies a real start->end span,
+    // rounded so the block always fully covers its actual scheduled time
+    const lockedEvents = DATA.events.filter(e => e.kidId === k.id && e.date === date).map(e => {
+      const rawStart = timeToSlotIndex(e.time, startH);
+      const rawEnd = timeToSlotIndex(e.endTime || e.time, startH);
+      const slotStart = Math.floor(rawStart);
+      const slotEnd = Math.ceil(rawEnd);
+      return { ...e, slotStart: Math.max(0, slotStart), slotEnd: Math.min(totalSlots, Math.max(slotStart+1, slotEnd)) };
+    });
+
+    const lockedOccupied = new Set();
+    lockedEvents.forEach(e => { for (let i = e.slotStart; i < e.slotEnd; i++) lockedOccupied.add(i); });
+
+    // Build the grid of empty drop targets (background layer)
+    const grid = document.createElement('div');
+    grid.className = 'timetable-grid';
+    grid.style.height = (totalSlots * SLOT_HEIGHT) + 'px';
+
+    for (let i = 0; i < totalSlots; i++) {
+      const h = startH + Math.floor(i / 4);
+      const m = (i % 4) * 15;
+      const key = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+      const showLabel = m === 0;
+      const row = document.createElement('div');
+      row.className = 'time-slot';
+      row.style.position = 'absolute';
+      row.style.top = (i * SLOT_HEIGHT) + 'px';
+      row.style.left = '0'; row.style.right = '0';
+      row.style.height = SLOT_HEIGHT + 'px';
+      const lbl = document.createElement('div');
+      lbl.className = 'time-label';
+      if (showLabel) { const h12 = h % 12 === 0 ? 12 : h % 12; lbl.textContent = `${h12}${h>=12?'pm':'am'}`; }
+      const drop = document.createElement('div');
+      drop.className = 'slot-drop' + (lockedOccupied.has(i) ? ' occupied' : '');
+      drop.dataset.slotIndex = i;
+      drop.dataset.key = key;
+      drop.dataset.blockKey = blockKey;
+      row.appendChild(lbl); row.appendChild(drop);
+      grid.appendChild(row);
+    }
+    wrap.appendChild(grid);
+
+    // Render locked event overlays
+    lockedEvents.forEach(e => {
+      const overlay = document.createElement('div');
+      overlay.className = 'placed-block-overlay locked';
+      overlay.style.background = e.color;
+      overlay.style.top = (e.slotStart * SLOT_HEIGHT + 1) + 'px';
+      overlay.style.height = ((e.slotEnd - e.slotStart) * SLOT_HEIGHT - 2) + 'px';
+      overlay.innerHTML = `<span class="pb-label">🔒 ${e.title}<span class="pb-time">${e.time}–${e.endTime || e.time}</span></span>`;
+      grid.appendChild(overlay);
+    });
+
+    // Render kid-placed activity overlays (each can span multiple slots via .slots)
+    Object.keys(placed).forEach(key => {
+      const block = placed[key];
+      const startIdx = Math.round(timeToSlotIndex(key, startH));
+      if (startIdx < 0 || startIdx >= totalSlots) return;
+      const slots = block.slots || 1;
+      renderPlacedOverlay(grid, block, key, blockKey, startIdx, slots, startH, totalSlots);
+    });
+  }
+
+  function renderPlacedOverlay(grid, block, key, blockKey, startIdx, slots, startH, totalSlots) {
+    const overlay = document.createElement('div');
+    overlay.className = 'placed-block-overlay';
+    overlay.style.background = block.color;
+    overlay.style.top = (startIdx * SLOT_HEIGHT + 1) + 'px';
+    overlay.style.height = (slots * SLOT_HEIGHT - 2) + 'px';
+    const endTime = slotIndexToTime(startIdx + slots, startH);
+    overlay.innerHTML = `
+      <span class="pb-label">${block.label}<span class="pb-time">${key}–${endTime}</span></span>
+      <button class="remove-block" onclick="removeBlock('${blockKey}','${key}')">✕</button>
+      <div class="resize-handle" data-key="${key}"></div>
+    `;
+    grid.appendChild(overlay);
+
+    // Drag-the-bottom-handle-to-resize interaction
+    const handle = overlay.querySelector('.resize-handle');
+    handle.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const startY = e.clientY;
+      const startSlots = slots;
+      const onMove = (moveEvent) => {
+        const deltaY = moveEvent.clientY - startY;
+        const deltaSlots = Math.round(deltaY / SLOT_HEIGHT);
+        let newSlots = Math.max(1, Math.min(startSlots + deltaSlots, totalSlots - startIdx));
+        overlay.style.height = (newSlots * SLOT_HEIGHT - 2) + 'px';
+        const newEnd = slotIndexToTime(startIdx + newSlots, startH);
+        overlay.querySelector('.pb-time').textContent = `${key}–${newEnd}`;
+      };
+      const onUp = (upEvent) => {
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        const deltaY = upEvent.clientY - startY;
+        const deltaSlots = Math.round(deltaY / SLOT_HEIGHT);
+        const newSlots = Math.max(1, Math.min(startSlots + deltaSlots, totalSlots - startIdx));
+        DATA.blocks[blockKey][key].slots = newSlots;
+        saveData(DATA);
+        const k = DATA.kids.find(x => x.id === currentKidId);
+        buildTimetable(k, todayStr());
+      };
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+    });
+  }
+
+  function removeBlock(blockKey, key) {
+    delete DATA.blocks[blockKey][key];
+    saveData(DATA);
+    renderMorning();
+  }
+
+  /* ============ TOAST ============ */
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  /* ============ INIT ============ */
+  // On every load: if this device is already bound to a kid, skip straight to their
+  // planner. Only show the setup picker the very first time the app opens on a device.
+  goHome();
+</script>
+</body>
+</html>
